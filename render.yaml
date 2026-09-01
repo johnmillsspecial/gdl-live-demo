@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: gdl-live-demo
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GDL_MODEL
+        value: claude-sonnet-5
+      - key: GDL_DAILY_CAP
+        value: "300"
