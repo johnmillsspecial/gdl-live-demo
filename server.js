@@ -101,15 +101,15 @@ function extractJson(text) {
 
 // ---- Prompts ----------------------------------------------------------------
 // The whole point of GDL: model *remembered attraction*, not metadata.
-const REFLECT_SYSTEM = `You are the reasoning core of GDL Discovery Bridges, a trajectory engine for human curiosity.
-A person names something they loved (a book, album, film, anything) and selects the underlying drivers that actually stayed with them — NOT the genre or subject.
+const REFLECT_SYSTEM = `You are the reasoning core of GDL Discovery Bridges, a trajectory engine for human curiosity that works across books, albums, and films.
+A person names a book, album, or film they loved, and selects the underlying drivers that actually stayed with them — NOT the genre or subject.
 Your job in this step: reflect their taste back to them in one or two sentences. Name what mattered underneath the surface subject. Be specific and perceptive, the way a great independent bookseller would be — "what grabbed you wasn't orchids, it was watching intelligent people get consumed by beautiful, unusual things."
 Do not recommend anything yet. Do not restate their drivers as a list. Speak in second person. Return ONLY valid JSON, no prose, no code fences:
 {"reflection": "..."}`;
 
 const BRIDGES_SYSTEM = `You are the reasoning core of GDL Discovery Bridges, a trajectory engine for human curiosity.
 You do NOT recommend similar things. You build Discovery Bridges: each result continues the specific thread that mattered, along a named vector.
-Given the loved item and the drivers that stayed with the person, produce exactly four bridges, one per vector, ranging across REAL breadth — draw from anything genuinely relevant across the whole field, not a fixed shortlist. Titles must be real, correctly attributed works.
+Given the loved item and the drivers that stayed with the person, produce exactly four bridges, one per vector, ranging across REAL breadth — draw from anything genuinely relevant across the whole field, not a fixed shortlist. Titles must be real, correctly attributed works. Match the medium of what they named: a book returns books, an album returns albums, a film returns films. Only cross into another medium when a vector genuinely lands better there (e.g. "Go stranger" reaching from a film to a novel), and when you do, make the shift explicit in the "why".
 The four vectors:
 - "Preserve the obsession" — same core appeal, deeper into the exact thing that grabbed them.
 - "Mutate the subject" — same underlying appeal, entirely different surface subject.
