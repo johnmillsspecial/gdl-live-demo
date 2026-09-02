@@ -165,6 +165,7 @@ async function send(text){
   text=(text||$("input").value).trim();
   if(!text) return;
   busy=true; $("send").disabled=true; $("input").value=""; autosize(); syncSend();
+  $("input").placeholder="Refine, or name another book…";
   spendChips(); // any chips already on screen are now answered
   addMsg("user",text);
   history.push({role:"user",content:text});
@@ -246,6 +247,7 @@ $("input").addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e
 $("send").onclick=()=>send();
 $("restart").onclick=()=>{
   history=[]; offlineShown=new Set(); offlineAsked=false;
+  $("input").placeholder="Name a book you love.";
   $("thread").innerHTML=""; greet();
 };
 
