@@ -54,6 +54,12 @@
 
   /* COMPOSER — locked at bottom, one soft unified block */
   .composer{flex:0 0 auto;background:var(--white);padding:14px 0 22px;}
+  .steer{display:flex;flex-wrap:wrap;gap:14px 20px;margin-bottom:14px;}
+  .steer-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .steer-label{font-family:var(--fc);font-weight:700;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--g3);margin-right:2px;}
+  .dchip{font-family:var(--fb);font-weight:400;font-size:12px;padding:5px 11px;background:transparent;border:1px solid var(--g5);color:var(--g2);cursor:pointer;border-radius:14px;transition:border-color .12s,color .12s,background .12s;}
+  .dchip:hover{border-color:var(--g3);color:var(--black);}
+  .dchip.on{border-color:var(--black);background:var(--black);color:var(--white);}
   .inputblock{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid var(--g4);border-radius:22px;padding:6px 6px 6px 18px;transition:border-color .12s,box-shadow .12s;}
   .inputblock:focus-within{border-color:var(--g2);box-shadow:0 1px 6px rgba(0,0,0,0.06);}
   textarea{flex:1;background:transparent;border:none;color:var(--black);font-family:var(--fb);font-size:15px;line-height:1.5;padding:8px 0;outline:none;resize:none;max-height:140px;min-height:24px;}
@@ -82,6 +88,29 @@
   <div id="thread" class="thread"></div>
 
   <div class="composer">
+    <div id="steer" class="steer">
+      <div class="steer-group" data-dim="preserve">
+        <span class="steer-label">Preserve</span>
+        <button class="dchip" data-val="subject">subject</button>
+        <button class="dchip" data-val="feeling">feeling</button>
+        <button class="dchip" data-val="style">style</button>
+        <button class="dchip" data-val="structure">structure</button>
+      </div>
+      <div class="steer-group" data-dim="distance">
+        <span class="steer-label">Distance</span>
+        <button class="dchip" data-val="safe">safe</button>
+        <button class="dchip" data-val="nearby">nearby</button>
+        <button class="dchip" data-val="far">far</button>
+        <button class="dchip" data-val="strange">strange</button>
+      </div>
+      <div class="steer-group" data-dim="tone">
+        <span class="steer-label">Tone</span>
+        <button class="dchip" data-val="warm">warm</button>
+        <button class="dchip" data-val="cool">cool</button>
+        <button class="dchip" data-val="dark">dark</button>
+        <button class="dchip" data-val="playful">playful</button>
+      </div>
+    </div>
     <div class="inputblock">
       <textarea id="input" placeholder="Name a book you love." rows="1"></textarea>
       <button id="send" class="send" aria-label="Send">&uarr;</button>
@@ -122,13 +151,40 @@ function addTyping(){
 }
 function scroll(){ const t=$("thread"); t.scrollTop=t.scrollHeight; }
 
-async function send(text){
+// steering state: one value per dimension, or null
+const steer={preserve:null,distance:null,tone:null};
+let hasNamedBook=false; // becomes true after first book, so chip changes re-steer
+
+function steerLine(){
+  const parts=[];
+  if(steer.preserve) parts.push("preserve="+steer.preserve);
+  if(steer.distance) parts.push("distance="+steer.distance);
+  if(steer.tone) parts.push("tone="+steer.tone);
+  return parts.length ? "[STEERING: "+parts.join("; ")+"]" : "";
+}
+
+async function send(text, opts){
+  opts=opts||{};
   if(busy) return;
   text=(text||$("input").value).trim();
-  if(!text) return;
-  busy=true; $("send").disabled=true; $("input").value=""; autosize(); syncSend();
-  addMsg("user",text);
-  history.push({role:"user",content:text});
+  if(!text && !opts.resteer) return;
+  busy=true; $("send").disabled=true;
+
+  // What the person sees vs. what the model receives (steering appended silently).
+  let displayText, sentContent;
+  if(opts.resteer){
+    displayText=null; // re-steer shows no new "You" bubble; the chips are the input
+    sentContent="Re-steer with the current controls. "+steerLine();
+  } else {
+    $("input").value=""; autosize(); syncSend();
+    displayText=text;
+    const sl=steerLine();
+    sentContent = sl ? (text+"\n"+sl) : text;
+    hasNamedBook=true;
+  }
+
+  if(displayText!==null){ addMsg("user",displayText); }
+  history.push({role:"user",content:sentContent});
   const typing=addTyping();
 
   let reply=null, wentOffline=false, errDetail="";
@@ -142,7 +198,7 @@ async function send(text){
     }catch(e){ wentOffline=true; if(!errDetail) errDetail=e.message||"request failed"; }
   } else { wentOffline=true; }
 
-  if(wentOffline){ setMode("offline"); reply=offlineReply(text); }
+  if(wentOffline){ setMode("offline"); reply=offlineReply(text||"that"); }
   typing.remove();
   addMsg("assistant",reply);
   history.push({role:"assistant",content:reply});
@@ -175,8 +231,8 @@ const POOL=[
 ];
 let offlineShown=new Set();
 function offlineReply(text){
-  const low=text.toLowerCase();
-  const wantStranger=/strange|weird|stranger|wild|out there/.test(low);
+  const low=(text||"").toLowerCase();
+  const wantStranger=/strange|weird|stranger|wild|out there/.test(low) || steer.distance==="strange" || steer.distance==="far";
   const wantDeeper=/deep|demanding|serious|rigor|academic|harder/.test(low);
   const already=/read it|know it|already/.test(low);
   let pick=POOL.filter(b=>!offlineShown.has(b.t))
@@ -200,10 +256,31 @@ function syncSend(){ const has=$("input").value.trim().length>0; const b=$("send
 $("input").addEventListener("input",()=>{ autosize(); syncSend(); });
 $("input").addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }});
 $("send").onclick=()=>send();
-$("restart").onclick=()=>{ history=[]; offlineShown=new Set(); $("thread").innerHTML=""; greet(); };
+$("restart").onclick=()=>{
+  history=[]; offlineShown=new Set(); hasNamedBook=false;
+  steer.preserve=steer.distance=steer.tone=null;
+  document.querySelectorAll(".dchip.on").forEach(c=>c.classList.remove("on"));
+  $("thread").innerHTML=""; greet();
+};
+
+// steering chips: single-select per group, click-again to clear; re-steer once a book exists
+document.querySelectorAll(".steer-group").forEach(group=>{
+  const dim=group.dataset.dim;
+  group.querySelectorAll(".dchip").forEach(chip=>{
+    chip.onclick=()=>{
+      if(busy) return;
+      const val=chip.dataset.val;
+      const wasOn=chip.classList.contains("on");
+      group.querySelectorAll(".dchip").forEach(c=>c.classList.remove("on"));
+      if(wasOn){ steer[dim]=null; }
+      else { chip.classList.add("on"); steer[dim]=val; }
+      if(hasNamedBook){ send(null,{resteer:true}); }
+    };
+  });
+});
 
 function greet(){
-  addMsg("assistant","Name a book. Then name what actually stayed with you — not the genre, the thing underneath it. The result continues that thread instead of matching the subject.\n\nPush back freely as it goes: \u201Ctoo dark,\u201D \u201Cread it,\u201D \u201Cgo stranger,\u201D \u201Cless academic.\u201D Each note changes what comes next.");
+  addMsg("assistant","Name a book you love. The result won't match the subject — it continues the thread underneath it.\n\nUse the controls below to steer: what to preserve, how far to travel, what mood to hit. Change a control anytime and the recommendation re-steers.");
 }
 
 detectMode();
