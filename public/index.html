@@ -54,12 +54,11 @@
 
   /* COMPOSER — locked at bottom, one soft unified block */
   .composer{flex:0 0 auto;background:var(--white);padding:14px 0 22px;}
-  .steer{display:flex;flex-wrap:wrap;gap:14px 20px;margin-bottom:14px;}
-  .steer-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-  .steer-label{font-family:var(--fc);font-weight:700;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--g3);margin-right:2px;}
-  .dchip{font-family:var(--fb);font-weight:400;font-size:12px;padding:5px 11px;background:transparent;border:1px solid var(--g5);color:var(--g2);cursor:pointer;border-radius:14px;transition:border-color .12s,color .12s,background .12s;}
-  .dchip:hover{border-color:var(--g3);color:var(--black);}
-  .dchip.on{border-color:var(--black);background:var(--black);color:var(--white);}
+  /* inline chips that appear under a GDL message in the flow */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .fchip{font-family:var(--fb);font-weight:400;font-size:13px;padding:7px 14px;background:transparent;border:1px solid var(--g4);color:var(--g1);cursor:pointer;border-radius:16px;white-space:nowrap;transition:border-color .12s,color .12s,background .12s;}
+  .fchip:hover{border-color:var(--black);background:var(--black);color:var(--white);}
+  .chips.spent .fchip{opacity:.4;pointer-events:none;}
   .inputblock{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid var(--g4);border-radius:22px;padding:6px 6px 6px 18px;transition:border-color .12s,box-shadow .12s;}
   .inputblock:focus-within{border-color:var(--g2);box-shadow:0 1px 6px rgba(0,0,0,0.06);}
   textarea{flex:1;background:transparent;border:none;color:var(--black);font-family:var(--fb);font-size:15px;line-height:1.5;padding:8px 0;outline:none;resize:none;max-height:140px;min-height:24px;}
@@ -88,29 +87,6 @@
   <div id="thread" class="thread"></div>
 
   <div class="composer">
-    <div id="steer" class="steer">
-      <div class="steer-group" data-dim="preserve">
-        <span class="steer-label">Preserve</span>
-        <button class="dchip" data-val="subject">subject</button>
-        <button class="dchip" data-val="feeling">feeling</button>
-        <button class="dchip" data-val="style">style</button>
-        <button class="dchip" data-val="structure">structure</button>
-      </div>
-      <div class="steer-group" data-dim="distance">
-        <span class="steer-label">Distance</span>
-        <button class="dchip" data-val="safe">safe</button>
-        <button class="dchip" data-val="nearby">nearby</button>
-        <button class="dchip" data-val="far">far</button>
-        <button class="dchip" data-val="strange">strange</button>
-      </div>
-      <div class="steer-group" data-dim="tone">
-        <span class="steer-label">Tone</span>
-        <button class="dchip" data-val="warm">warm</button>
-        <button class="dchip" data-val="cool">cool</button>
-        <button class="dchip" data-val="dark">dark</button>
-        <button class="dchip" data-val="playful">playful</button>
-      </div>
-    </div>
     <div class="inputblock">
       <textarea id="input" placeholder="Name a book you love." rows="1"></textarea>
       <button id="send" class="send" aria-label="Send">&uarr;</button>
@@ -143,6 +119,20 @@ function addMsg(role, text){
   el.querySelector(".bubble").textContent=text;
   $("thread").appendChild(el); scroll(); return el;
 }
+// Render tappable chips under a GDL message. Tapping one sends it and spends the set.
+function addChips(labels){
+  if(!labels || !labels.length) return;
+  const wrap=document.createElement("div");
+  wrap.className="chips";
+  labels.forEach(lbl=>{
+    const c=document.createElement("button");
+    c.className="fchip"; c.textContent=lbl;
+    c.onclick=()=>{ if(busy) return; wrap.classList.add("spent"); send(lbl); };
+    wrap.appendChild(c);
+  });
+  $("thread").appendChild(wrap); scroll();
+}
+function spendChips(){ document.querySelectorAll(".chips:not(.spent)").forEach(w=>w.classList.add("spent")); }
 function addTyping(){
   const el=document.createElement("div");
   el.className="msg sys typing";
@@ -151,57 +141,33 @@ function addTyping(){
 }
 function scroll(){ const t=$("thread"); t.scrollTop=t.scrollHeight; }
 
-// steering state: one value per dimension, or null
-const steer={preserve:null,distance:null,tone:null};
-let hasNamedBook=false; // becomes true after first book, so chip changes re-steer
-
-function steerLine(){
-  const parts=[];
-  if(steer.preserve) parts.push("preserve="+steer.preserve);
-  if(steer.distance) parts.push("distance="+steer.distance);
-  if(steer.tone) parts.push("tone="+steer.tone);
-  return parts.length ? "[STEERING: "+parts.join("; ")+"]" : "";
-}
-
-async function send(text, opts){
-  opts=opts||{};
+async function send(text){
   if(busy) return;
   text=(text||$("input").value).trim();
-  if(!text && !opts.resteer) return;
-  busy=true; $("send").disabled=true;
-
-  // What the person sees vs. what the model receives (steering appended silently).
-  let displayText, sentContent;
-  if(opts.resteer){
-    displayText=null; // re-steer shows no new "You" bubble; the chips are the input
-    sentContent="Re-steer with the current controls. "+steerLine();
-  } else {
-    $("input").value=""; autosize(); syncSend();
-    displayText=text;
-    const sl=steerLine();
-    sentContent = sl ? (text+"\n"+sl) : text;
-    hasNamedBook=true;
-  }
-
-  if(displayText!==null){ addMsg("user",displayText); }
-  history.push({role:"user",content:sentContent});
+  if(!text) return;
+  busy=true; $("send").disabled=true; $("input").value=""; autosize(); syncSend();
+  spendChips(); // any chips already on screen are now answered
+  addMsg("user",text);
+  history.push({role:"user",content:text});
   const typing=addTyping();
 
-  let reply=null, wentOffline=false, errDetail="";
+  let reply=null, chips=[], wentOffline=false, errDetail="";
   if(mode==="live"){
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages:history})});
       const data=await r.json().catch(()=>({}));
       if(!r.ok){ errDetail=(data && (data.message||data.error))||("status "+r.status); throw new Error(errDetail); }
       reply=(data && typeof data.reply==="string") ? data.reply.trim() : "";
+      chips=(data && Array.isArray(data.chips)) ? data.chips : [];
       if(!reply){ errDetail="empty reply from server"; throw new Error(errDetail); }
     }catch(e){ wentOffline=true; if(!errDetail) errDetail=e.message||"request failed"; }
   } else { wentOffline=true; }
 
-  if(wentOffline){ setMode("offline"); reply=offlineReply(text||"that"); }
+  if(wentOffline){ setMode("offline"); const o=offlineReply(text); reply=o.reply; chips=o.chips; }
   typing.remove();
   addMsg("assistant",reply);
   history.push({role:"assistant",content:reply});
+  addChips(chips);
   busy=false; syncSend(); $("input").focus();
 }
 
@@ -230,25 +196,25 @@ const POOL=[
   {t:"Musicophilia",a:"Oliver Sacks",tags:["consciousness","eccentrics","systems","loss"],d:3,s:2},
 ];
 let offlineShown=new Set();
+let offlineAsked=false;
 function offlineReply(text){
   const low=(text||"").toLowerCase();
-  const wantStranger=/strange|weird|stranger|wild|out there/.test(low) || steer.distance==="strange" || steer.distance==="far";
+  // First turn in offline mode: ask one guiding question, like the live flow.
+  if(!offlineAsked && history.filter(m=>m.role==="user").length<=1){
+    offlineAsked=true;
+    return {
+      reply:"What pulled you in most — the feeling it left you with, the subject itself, or the writing?",
+      chips:["the feeling","the subject","the writing"]
+    };
+  }
+  const wantStranger=/strange|weird|stranger|wild|out there|further|far/.test(low);
   const wantDeeper=/deep|demanding|serious|rigor|academic|harder/.test(low);
-  const already=/read it|know it|already/.test(low);
   let pick=POOL.filter(b=>!offlineShown.has(b.t))
     .sort((x,y)=> wantStranger ? y.s-x.s : wantDeeper ? y.d-x.d : (y.d+y.s)-(x.d+x.s))[0] || POOL[0];
   offlineShown.add(pick.t);
-  const lead = history.length<=1
-    ? "The thread underneath: "
-    : already ? "Already read. Alternate: "
-    : wantStranger ? "Further out: "
-    : wantDeeper ? "More demanding: "
-    : "Another vector: ";
-  const known = history.length<=1
-    ? "obsession pursued past reason. \u201C"
-    : "\u201C";
-  return lead + known + pick.t + "\u201D by " + pick.a + ". Preserves the thread; changes the surface. "
+  const reply="The thread continues in \u201C"+pick.t+"\u201D by "+pick.a+". Preserves what mattered; changes the surface. "
     + "[Offline mode — tagged catalog of 22. Live reasoning ranges wider.]";
+  return { reply, chips:["go stranger","something warmer","read it — another"] };
 }
 
 function autosize(){ const i=$("input"); i.style.height="auto"; i.style.height=Math.min(i.scrollHeight,140)+"px"; }
@@ -257,30 +223,12 @@ $("input").addEventListener("input",()=>{ autosize(); syncSend(); });
 $("input").addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }});
 $("send").onclick=()=>send();
 $("restart").onclick=()=>{
-  history=[]; offlineShown=new Set(); hasNamedBook=false;
-  steer.preserve=steer.distance=steer.tone=null;
-  document.querySelectorAll(".dchip.on").forEach(c=>c.classList.remove("on"));
+  history=[]; offlineShown=new Set(); offlineAsked=false;
   $("thread").innerHTML=""; greet();
 };
 
-// steering chips: single-select per group, click-again to clear; re-steer once a book exists
-document.querySelectorAll(".steer-group").forEach(group=>{
-  const dim=group.dataset.dim;
-  group.querySelectorAll(".dchip").forEach(chip=>{
-    chip.onclick=()=>{
-      if(busy) return;
-      const val=chip.dataset.val;
-      const wasOn=chip.classList.contains("on");
-      group.querySelectorAll(".dchip").forEach(c=>c.classList.remove("on"));
-      if(wasOn){ steer[dim]=null; }
-      else { chip.classList.add("on"); steer[dim]=val; }
-      if(hasNamedBook){ send(null,{resteer:true}); }
-    };
-  });
-});
-
 function greet(){
-  addMsg("assistant","Name a book you love. The result won't match the subject — it continues the thread underneath it.\n\nUse the controls below to steer: what to preserve, how far to travel, what mood to hit. Change a control anytime and the recommendation re-steers.");
+  addMsg("assistant","Name a book you love. Not for something similar — for where it goes next. A couple of quick questions to find the thread that mattered, then one book that continues it.");
 }
 
 detectMode();
