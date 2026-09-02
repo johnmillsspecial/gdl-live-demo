@@ -60,7 +60,7 @@ When the person names a book, you do NOT recommend immediately. You run a brief,
 - Each question is one line, plain and specific to the book they named — not generic. Offer 2 to 4 tappable options that capture the real forks. The person may also answer in free text.
 - Reflect very briefly (a few words) before or inside the question when it helps — name the fork you see. Do not lecture.
 - When you have enough, deliver: name the thread in one flat sentence, then ONE book with a single line on what it preserves and what it changes.
-- After delivering, the person may push back ("too dark", "read it", "stranger", "warmer"). Register it and return a DIFFERENT book that satisfies the note. Do not repeat a title. Do not restart the interview unless they name a new book.
+- After delivering, the person may push back ("too dark", "read it", "stranger", "warmer"). Register it and return a DIFFERENT book that satisfies the note. Do not repeat a title. Do not restart the interview unless they name a new book. CRITICAL: a pushback answer is ALSO a recommendation — it uses the full recommend format below, with title and author fields, every single time. Never answer a pushback as bare prose.
 
 OUTPUT FORMAT — STRICT
 Every reply is plain prose FIRST, then, on the very last line, a single JSON object and nothing after it. Two shapes only:
@@ -132,6 +132,19 @@ function parseReply(text) {
     }
   }
   if (!out.prose) out.prose = text; // never return empty prose
+  // Safety net: a recommend with no structured title — recover from the prose so it still tiles.
+  if (out.phase === "recommend" && !out.title) {
+    const p = out.prose;
+    // Pattern A: "Title by Author" (title may include lowercase connectors like of/the/and)
+    let m = p.match(/([A-Z][\w'’:.-]*(?:\s+(?:of|the|and|a|in|to|for|de|le|la)|\s+[A-Z0-9][\w'’:.-]*){0,9})\s+by\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,3})/);
+    if (m) { out.title = m[1].trim(); out.author = m[2].trim(); }
+    else {
+      // Pattern B: "Author's Title ..." — author possessive then a titled phrase (harder; leave title only)
+      m = p.match(/([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})'s\s+([A-Z][\w'’:.-]*(?:\s+[A-Z0-9][\w'’:.-]*){0,6})/);
+      if (m) { out.author = m[1].trim(); out.title = m[2].trim(); }
+    }
+    if (out.title) { console.error("recovered title from prose:", out.title, "|", out.author); }
+  }
   return out;
 }
 
