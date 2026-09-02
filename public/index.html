@@ -6,293 +6,208 @@
 <title>GDL — Discovery Bridges</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Barlow+Condensed:wght@300;400;700;900&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #000000;
-    --panel: #0b0b0b;
-    --line: #1f1f1f;
-    --ink: #f4f4f4;
-    --mute: #8a8a8a;
-    --red: #e01313;
-    --red-dim: #5a0808;
+  /* GDL restraint variant of the johnmills Swiss system.
+     "No color for GDL — a tool staying out of its own way." Red is used sparingly:
+     one structural accent, plus the status signal (green = live, red = offline). */
+  :root{
+    --black:#0a0a0a; --white:#f5f4f0; --red:#d42b2b;
+    --g1:#1e1e1e; --g2:#444; --g3:#888; --g4:#bbb; --g5:#ddd;
+    --green:#1f7a3d;
+    --fc:'Barlow Condensed',sans-serif; --fb:'Barlow',sans-serif;
+    --ease:cubic-bezier(0.16,1,0.3,1);
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "Inter", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased; line-height: 1.5;
-  }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 22px 90px; }
-  header { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 30px; }
-  .brand { font-family: "Archivo", sans-serif; font-weight: 800; letter-spacing: -0.02em; font-size: 30px; }
-  .brand span { color: var(--red); }
-  .tag { font-family: "IBM Plex Mono", monospace; color: var(--mute); font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; margin-top: 6px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 8px; margin-top: 16px;
-    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.08em;
-    border: 1px solid var(--line); padding: 5px 10px; color: var(--mute); text-transform: uppercase;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
-  .badge.live .dot { background: #24d05a; box-shadow: 0 0 8px #24d05a; }
-  .badge.live { color: var(--ink); border-color: #1f5a2f; }
-  h2 { font-family: "Archivo", sans-serif; font-weight: 600; font-size: 15px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mute); margin: 34px 0 14px; }
-  .step-num { color: var(--red); font-family: "IBM Plex Mono", monospace; margin-right: 8px; }
-  input[type="text"] {
-    width: 100%; background: var(--panel); border: 1px solid var(--line); color: var(--ink);
-    font-family: "IBM Plex Mono", monospace; font-size: 16px; padding: 14px 16px; outline: none;
-  }
-  input[type="text"]:focus { border-color: var(--red); }
-  .drivers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-  .chip {
-    font-family: "IBM Plex Mono", monospace; font-size: 13px; padding: 9px 14px;
-    background: var(--panel); border: 1px solid var(--line); color: var(--ink); cursor: pointer;
-    user-select: none; transition: border-color .12s, background .12s;
-  }
-  .chip:hover { border-color: var(--mute); }
-  .chip.on { border-color: var(--red); background: var(--red-dim); color: #fff; }
-  .btn {
-    margin-top: 22px; font-family: "Archivo", sans-serif; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; font-size: 14px; background: var(--red); color: #fff; border: none;
-    padding: 15px 28px; cursor: pointer;
-  }
-  .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
-  .reflection {
-    border-left: 2px solid var(--red); background: var(--panel); padding: 18px 20px; margin-top: 8px;
-    font-size: 17px; line-height: 1.55;
-  }
-  .bridges { display: grid; gap: 14px; margin-top: 6px; }
-  .bridge { border: 1px solid var(--line); background: var(--panel); padding: 18px 20px; }
-  .vector { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); margin-bottom: 8px; }
-  .b-title { font-family: "Archivo", sans-serif; font-weight: 600; font-size: 18px; }
-  .b-creator { color: var(--mute); font-size: 14px; margin-top: 2px; font-family: "IBM Plex Mono", monospace; }
-  .b-why { margin-top: 10px; font-size: 15px; }
-  .status { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--mute); margin-top: 16px; min-height: 18px; }
-  .status.err { color: var(--red); }
-  .hidden { display: none; }
-  footer { margin-top: 60px; border-top: 1px solid var(--line); padding-top: 18px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--mute); letter-spacing: 0.08em; }
-  .spin { display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-top-color: var(--red); border-radius:50%; animation: sp .7s linear infinite; vertical-align:-1px; margin-right:8px; }
-  @keyframes sp { to { transform: rotate(360deg); } }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-font-smoothing:antialiased;height:100%;}
+  body{height:100%;background:var(--white);color:var(--black);font-family:var(--fb);font-size:15px;line-height:1.6;overflow:hidden;}
+  /* Fixed shell: header and composer are locked; only .thread scrolls between them. */
+  .wrap{max-width:760px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:0 24px;overflow:hidden;}
+
+  /* HEADER — locked at top. The one sparing decorative red: the bottom rule. */
+  header{flex:0 0 auto;border-bottom:3px solid var(--red);padding:28px 0 20px;background:var(--white);}
+  .head-row{display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
+  .brand{font-family:var(--fc);font-weight:900;font-size:22px;text-transform:uppercase;letter-spacing:0.01em;}
+  .brand span{color:var(--g3);font-weight:700;}
+  .restart{background:none;border:none;color:var(--g3);font-family:var(--fc);font-weight:700;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;padding:0;white-space:nowrap;transition:color .12s;}
+  .restart:hover{color:var(--black);}
+  .tag{font-family:var(--fc);font-weight:700;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--g3);margin-top:8px;}
+  .badge{display:inline-flex;align-items:center;gap:8px;margin-top:16px;font-family:var(--fc);font-weight:700;font-size:10px;letter-spacing:0.15em;border:1px solid var(--g5);padding:5px 10px;color:var(--g3);text-transform:uppercase;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--g4);}
+  /* status color logic: green when live, red when off */
+  .badge.live .dot{background:var(--green);}
+  .badge.live{color:var(--black);border-color:var(--g3);}
+  .badge.off .dot{background:var(--red);}
+  .badge.off{color:var(--g2);border-color:var(--g4);}
+
+  /* THREAD — the only scrolling region */
+  .thread{flex:1 1 auto;overflow-y:auto;padding:24px 0;display:flex;flex-direction:column;gap:0;}
+  .msg{padding:22px 0;border-bottom:1px solid var(--g5);}
+  .msg .who{font-family:var(--fc);font-weight:700;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--g3);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+  .msg.you .who{color:var(--g4);}
+  .msg .who::before{content:"";width:20px;height:2px;background:var(--black);display:inline-block;}
+  .msg.you .who::before{background:var(--g4);}
+  .bubble{font-family:var(--fb);font-size:16px;line-height:1.72;white-space:pre-wrap;color:var(--g1);}
+  .msg.you .bubble{color:var(--g2);font-weight:300;}
+  .msg.sys .bubble{color:var(--black);}
+  .typing .bubble{color:var(--g3);font-family:var(--fc);font-weight:400;letter-spacing:0.08em;text-transform:uppercase;font-size:13px;}
+
+  /* COMPOSER — locked at bottom, one soft unified block */
+  .composer{flex:0 0 auto;background:var(--white);padding:14px 0 22px;}
+  .inputblock{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid var(--g4);border-radius:22px;padding:6px 6px 6px 18px;transition:border-color .12s,box-shadow .12s;}
+  .inputblock:focus-within{border-color:var(--g2);box-shadow:0 1px 6px rgba(0,0,0,0.06);}
+  textarea{flex:1;background:transparent;border:none;color:var(--black);font-family:var(--fb);font-size:15px;line-height:1.5;padding:8px 0;outline:none;resize:none;max-height:140px;min-height:24px;}
+  textarea::placeholder{color:var(--g4);}
+  .send{font-family:var(--fb);font-weight:500;font-size:18px;line-height:1;background:var(--g4);color:#fff;border:none;border-radius:50%;width:38px;height:38px;flex:0 0 38px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s;}
+  .send.ready{background:var(--black);}
+  .send.ready:hover{background:var(--g1);}
+  .send:disabled{cursor:default;}
+  .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--g5);border-top-color:var(--black);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:8px;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+
+  @media (max-width:860px){ .wrap{padding:0 18px;} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">GDL <span>/</span> Discovery Bridges</div>
-    <div class="tag">Book discovery — a trajectory engine for human curiosity</div>
-    <div id="badge" class="badge"><span class="dot"></span><span id="badge-text">Checking mode…</span></div>
+    <div class="head-row">
+      <div class="brand">GDL <span>/ Discovery Bridges</span></div>
+      <button id="restart" class="restart">Start over</button>
+    </div>
+    <div class="tag">Find your next read</div>
+    <div id="badge" class="badge"><span class="dot"></span><span id="badge-text">Checking…</span></div>
   </header>
 
-  <h2><span class="step-num">01</span>Name a book you loved</h2>
-  <input id="loved" type="text" placeholder="a book that stayed with you — title or author" autocomplete="off" />
+  <div id="thread" class="thread"></div>
 
-  <h2><span class="step-num">02</span>What actually stayed with you?</h2>
-  <p style="color:var(--mute); font-size:14px; margin-top:-6px;">Not the genre. The thing underneath.</p>
-  <div id="drivers" class="drivers"></div>
-
-  <button id="go" class="btn" disabled>Build the bridges</button>
-  <div id="status" class="status"></div>
-
-  <section id="out" class="hidden">
-    <h2><span class="step-num">03</span>What mattered</h2>
-    <div id="reflection" class="reflection"></div>
-    <h2>Where it goes next</h2>
-    <div id="bridges" class="bridges"></div>
-  </section>
-
-  <footer>GDL SYSTEMS — gdlsystems.io · Not a recommendation engine. A trajectory engine.</footer>
+  <div class="composer">
+    <div class="inputblock">
+      <textarea id="input" placeholder="Name a book you love." rows="1"></textarea>
+      <button id="send" class="send" aria-label="Send">&uarr;</button>
+    </div>
+  </div>
 </div>
 
 <script>
-// ---- Drivers (superset of the appeal vocabulary from the founding docs) -----
-const DRIVER_POOL = [
-  "obsessive collectors","rare living things","eccentric experts","beautiful writing",
-  "natural history","commerce","adventure","strange people","altered states",
-  "speculative thinking","impossible connections","mythology","anthropology",
-  "storytelling","consciousness","forbidden knowledge","quiet dread","moral weight",
-  "systems & machinery","outsiders","memory & loss","obsessive craft"
+const $ = (id)=>document.getElementById(id);
+let mode="unknown";
+let history=[];
+let busy=false;
+
+async function detectMode(){
+  try{ const r=await fetch("/api/health"); const h=await r.json();
+    setMode(h.ok && h.keyConfigured ? "live":"offline");
+  }catch{ setMode("offline"); }
+}
+function setMode(m){
+  mode=m; const b=$("badge"), t=$("badge-text");
+  b.classList.remove("live","off");
+  if(m==="live"){ b.classList.add("live"); t.textContent="Live — reasoning on"; }
+  else{ b.classList.add("off"); t.textContent="Offline — tagged catalog"; }
+}
+
+function addMsg(role, text){
+  const el=document.createElement("div");
+  el.className="msg "+(role==="assistant"?"sys":"you");
+  el.innerHTML='<div class="who">'+(role==="assistant"?"GDL":"You")+'</div><div class="bubble"></div>';
+  el.querySelector(".bubble").textContent=text;
+  $("thread").appendChild(el); scroll(); return el;
+}
+function addTyping(){
+  const el=document.createElement("div");
+  el.className="msg sys typing";
+  el.innerHTML='<div class="who">GDL</div><div class="bubble"><span class="spin"></span>tracing the thread…</div>';
+  $("thread").appendChild(el); scroll(); return el;
+}
+function scroll(){ const t=$("thread"); t.scrollTop=t.scrollHeight; }
+
+async function send(text){
+  if(busy) return;
+  text=(text||$("input").value).trim();
+  if(!text) return;
+  busy=true; $("send").disabled=true; $("input").value=""; autosize(); syncSend();
+  addMsg("user",text);
+  history.push({role:"user",content:text});
+  const typing=addTyping();
+
+  let reply=null, wentOffline=false;
+  if(mode==="live"){
+    try{
+      const r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages:history})});
+      if(!r.ok) throw new Error("status_"+r.status);
+      const data=await r.json();
+      reply=data.reply;
+    }catch(e){ wentOffline=true; }
+  } else { wentOffline=true; }
+
+  if(wentOffline){ setMode("offline"); reply=offlineReply(text); }
+  typing.remove();
+  addMsg("assistant",reply);
+  history.push({role:"assistant",content:reply});
+  busy=false; syncSend(); $("input").focus();
+}
+
+const POOL=[
+  {t:"The Feather Thief",a:"Kirk Wallace Johnson",tags:["obsession","rare things","crime","nature"],d:2,s:2},
+  {t:"The Orchid Thief",a:"Susan Orlean",tags:["obsession","rare things","eccentrics","nature"],d:2,s:2},
+  {t:"The Dragon Behind the Glass",a:"Emily Voigt",tags:["obsession","rare things","adventure"],d:2,s:2},
+  {t:"The Botany of Desire",a:"Michael Pollan",tags:["nature","ideas","commerce"],d:3,s:2},
+  {t:"The Cabaret of Plants",a:"Richard Mabey",tags:["nature","beauty","eccentrics","myth"],d:3,s:3},
+  {t:"Into the Wild",a:"Jon Krakauer",tags:["adventure","outsiders","loss"],d:2,s:2},
+  {t:"The Immortal Life of Henrietta Lacks",a:"Rebecca Skloot",tags:["nature","moral weight","commerce"],d:3,s:1},
+  {t:"The Emperor of All Maladies",a:"Siddhartha Mukherjee",tags:["nature","systems","moral weight"],d:4,s:1},
+  {t:"Stiff",a:"Mary Roach",tags:["nature","dread","forbidden"],d:2,s:3},
+  {t:"The Sixth Extinction",a:"Elizabeth Kolbert",tags:["nature","moral weight","loss"],d:3,s:1},
+  {t:"Food of the Gods",a:"Terence McKenna",tags:["altered states","ideas","connections"],d:3,s:4},
+  {t:"The Doors of Perception",a:"Aldous Huxley",tags:["altered states","consciousness","beauty"],d:3,s:3},
+  {t:"VALIS",a:"Philip K. Dick",tags:["connections","consciousness","myth","outsiders"],d:3,s:5},
+  {t:"Godel, Escher, Bach",a:"Douglas Hofstadter",tags:["connections","systems","consciousness"],d:5,s:3},
+  {t:"The Master and Margarita",a:"Mikhail Bulgakov",tags:["myth","moral weight","connections"],d:4,s:4},
+  {t:"House of Leaves",a:"Mark Z. Danielewski",tags:["dread","connections","loss"],d:4,s:5},
+  {t:"Annihilation",a:"Jeff VanderMeer",tags:["dread","rare things","consciousness","nature"],d:3,s:5},
+  {t:"The Peregrine",a:"J.A. Baker",tags:["beauty","nature","loss","rare things"],d:4,s:3},
+  {t:"Blood Meridian",a:"Cormac McCarthy",tags:["moral weight","adventure","beauty","dread"],d:4,s:3},
+  {t:"Pilgrim at Tinker Creek",a:"Annie Dillard",tags:["nature","beauty","consciousness","dread"],d:4,s:3},
+  {t:"The Soul of an Octopus",a:"Sy Montgomery",tags:["rare things","consciousness","beauty","nature"],d:2,s:2},
+  {t:"Musicophilia",a:"Oliver Sacks",tags:["consciousness","eccentrics","systems","loss"],d:3,s:2},
 ];
-
-let selected = new Set();
-let mode = "unknown"; // 'live' | 'offline'
-
-const $ = (id) => document.getElementById(id);
-
-// ---- Build driver chips -----------------------------------------------------
-const driversEl = $("drivers");
-DRIVER_POOL.forEach((d) => {
-  const c = document.createElement("div");
-  c.className = "chip"; c.textContent = d;
-  c.onclick = () => {
-    if (selected.has(d)) { selected.delete(d); c.classList.remove("on"); }
-    else { selected.add(d); c.classList.add("on"); }
-    refreshGo();
-  };
-  driversEl.appendChild(c);
-});
-$("loved").addEventListener("input", refreshGo);
-function refreshGo() {
-  $("go").disabled = !($("loved").value.trim() && selected.size > 0);
+let offlineShown=new Set();
+function offlineReply(text){
+  const low=text.toLowerCase();
+  const wantStranger=/strange|weird|stranger|wild|out there/.test(low);
+  const wantDeeper=/deep|demanding|serious|rigor|academic|harder/.test(low);
+  const already=/read it|know it|already/.test(low);
+  let pick=POOL.filter(b=>!offlineShown.has(b.t))
+    .sort((x,y)=> wantStranger ? y.s-x.s : wantDeeper ? y.d-x.d : (y.d+y.s)-(x.d+x.s))[0] || POOL[0];
+  offlineShown.add(pick.t);
+  const lead = history.length<=1
+    ? "The thread underneath: "
+    : already ? "Already read. Alternate: "
+    : wantStranger ? "Further out: "
+    : wantDeeper ? "More demanding: "
+    : "Another vector: ";
+  const known = history.length<=1
+    ? "obsession pursued past reason. \u201C"
+    : "\u201C";
+  return lead + known + pick.t + "\u201D by " + pick.a + ". Preserves the thread; changes the surface. "
+    + "[Offline mode — tagged catalog of 22. Live reasoning ranges wider.]";
 }
 
-// ---- Mode detection ---------------------------------------------------------
-async function detectMode() {
-  try {
-    const r = await fetch("/api/health");
-    const h = await r.json();
-    if (h.ok && h.keyConfigured) setMode("live");
-    else setMode("offline");
-  } catch { setMode("offline"); }
+function autosize(){ const i=$("input"); i.style.height="auto"; i.style.height=Math.min(i.scrollHeight,140)+"px"; }
+function syncSend(){ const has=$("input").value.trim().length>0; const b=$("send"); b.classList.toggle("ready",has); b.disabled=!has; }
+$("input").addEventListener("input",()=>{ autosize(); syncSend(); });
+$("input").addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }});
+$("send").onclick=()=>send();
+$("restart").onclick=()=>{ history=[]; offlineShown=new Set(); $("thread").innerHTML=""; greet(); };
+
+function greet(){
+  addMsg("assistant","Name a book. Then name what actually stayed with you — not the genre, the thing underneath it. The result continues that thread instead of matching the subject.\n\nPush back freely as it goes: \u201Ctoo dark,\u201D \u201Cread it,\u201D \u201Cgo stranger,\u201D \u201Cless academic.\u201D Each note changes what comes next.");
 }
-function setMode(m) {
-  mode = m;
-  const b = $("badge"), t = $("badge-text");
-  if (m === "live") { b.classList.add("live"); t.textContent = "Live — reasoning through Claude"; }
-  else { b.classList.remove("live"); t.textContent = "Offline — using tagged catalog"; }
-}
-
-// ---- Main flow --------------------------------------------------------------
-$("go").onclick = async () => {
-  const loved = $("loved").value.trim();
-  const drivers = [...selected];
-  $("go").disabled = true;
-  $("out").classList.add("hidden");
-  setStatus('<span class="spin"></span>Reading your taste…', false);
-
-  let reflection = null, bridges = null, usedOffline = false;
-
-  if (mode === "live") {
-    try {
-      const rf = await postJSON("/api/reflect", { loved, drivers });
-      reflection = rf.reflection;
-      setStatus('<span class="spin"></span>Building bridges…', false);
-      const br = await postJSON("/api/bridges", { loved, drivers });
-      bridges = br.bridges;
-    } catch (e) {
-      usedOffline = true; // live failed mid-flight; fall back gracefully
-    }
-  } else {
-    usedOffline = true;
-  }
-
-  if (usedOffline) {
-    setMode("offline");
-    const local = offlineBridges(loved, drivers);
-    reflection = local.reflection;
-    bridges = local.bridges;
-  }
-
-  render(reflection, bridges);
-  setStatus(usedOffline ? "Served from tagged catalog." : "Reasoned live through Claude.", false);
-  $("go").disabled = false;
-};
-
-async function postJSON(url, body) {
-  const r = await fetch(url, {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error("bad_status_" + r.status);
-  return r.json();
-}
-function setStatus(html, isErr) {
-  const s = $("status"); s.innerHTML = html; s.classList.toggle("err", !!isErr);
-}
-function render(reflection, bridges) {
-  $("reflection").textContent = reflection;
-  const wrap = $("bridges"); wrap.innerHTML = "";
-  bridges.forEach((b) => {
-    const el = document.createElement("div"); el.className = "bridge";
-    el.innerHTML =
-      '<div class="vector">' + esc(b.vector) + '</div>' +
-      '<div class="b-title">' + esc(b.title) + '</div>' +
-      '<div class="b-creator">' + esc(b.creator || "") + '</div>' +
-      '<div class="b-why">' + esc(b.why) + '</div>';
-    wrap.appendChild(el);
-  });
-  $("out").classList.remove("hidden");
-}
-function esc(s){ return String(s).replace(/[&<>]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
-
-// ---- Offline fallback: 22-book tagged pool + weighted overlap ---------------
-// Zero-network. Different driver selections produce genuinely different bridges,
-// even for a typed title outside the pool.
-const POOL = [
-  { t:"The Feather Thief", a:"Kirk Wallace Johnson", tags:["obsessive collectors","rare living things","strange people","commerce","natural history"], depth:2, strange:2 },
-  { t:"The Orchid Thief", a:"Susan Orlean", tags:["obsessive collectors","rare living things","eccentric experts","beautiful writing","natural history"], depth:2, strange:2 },
-  { t:"The Dragon Behind the Glass", a:"Emily Voigt", tags:["rare living things","commerce","adventure","obsessive collectors","strange people"], depth:2, strange:2 },
-  { t:"The Botany of Desire", a:"Michael Pollan", tags:["natural history","speculative thinking","commerce","beautiful writing","consciousness"], depth:3, strange:2 },
-  { t:"The Cabaret of Plants", a:"Richard Mabey", tags:["natural history","beautiful writing","strange people","mythology","eccentric experts"], depth:3, strange:3 },
-  { t:"Into the Wild", a:"Jon Krakauer", tags:["adventure","outsiders","beautiful writing","strange people","memory & loss"], depth:2, strange:2 },
-  { t:"The Immortal Life of Henrietta Lacks", a:"Rebecca Skloot", tags:["natural history","moral weight","commerce","memory & loss","systems & machinery"], depth:3, strange:1 },
-  { t:"The Emperor of All Maladies", a:"Siddhartha Mukherjee", tags:["natural history","systems & machinery","moral weight","obsessive craft","eccentric experts"], depth:4, strange:1 },
-  { t:"Stiff", a:"Mary Roach", tags:["natural history","strange people","quiet dread","storytelling","forbidden knowledge"], depth:2, strange:3 },
-  { t:"The Sixth Extinction", a:"Elizabeth Kolbert", tags:["natural history","moral weight","rare living things","speculative thinking","memory & loss"], depth:3, strange:1 },
-  { t:"Food of the Gods", a:"Terence McKenna", tags:["altered states","speculative thinking","impossible connections","anthropology","consciousness"], depth:3, strange:4 },
-  { t:"The Doors of Perception", a:"Aldous Huxley", tags:["altered states","consciousness","beautiful writing","speculative thinking","forbidden knowledge"], depth:3, strange:3 },
-  { t:"VALIS", a:"Philip K. Dick", tags:["impossible connections","consciousness","mythology","altered states","outsiders"], depth:3, strange:5 },
-  { t:"Godel, Escher, Bach", a:"Douglas Hofstadter", tags:["impossible connections","systems & machinery","consciousness","speculative thinking","obsessive craft"], depth:5, strange:3 },
-  { t:"The Master and Margarita", a:"Mikhail Bulgakov", tags:["mythology","storytelling","strange people","moral weight","impossible connections"], depth:4, strange:4 },
-  { t:"House of Leaves", a:"Mark Z. Danielewski", tags:["quiet dread","impossible connections","obsessive craft","memory & loss","outsiders"], depth:4, strange:5 },
-  { t:"Annihilation", a:"Jeff VanderMeer", tags:["quiet dread","rare living things","consciousness","natural history","strange people"], depth:3, strange:5 },
-  { t:"The Peregrine", a:"J.A. Baker", tags:["beautiful writing","natural history","obsessive craft","memory & loss","rare living things"], depth:4, strange:3 },
-  { t:"Blood Meridian", a:"Cormac McCarthy", tags:["moral weight","adventure","beautiful writing","quiet dread","outsiders"], depth:4, strange:3 },
-  { t:"Pilgrim at Tinker Creek", a:"Annie Dillard", tags:["natural history","beautiful writing","consciousness","quiet dread","memory & loss"], depth:4, strange:3 },
-  { t:"The Soul of an Octopus", a:"Sy Montgomery", tags:["rare living things","consciousness","beautiful writing","natural history","eccentric experts"], depth:2, strange:2 },
-  { t:"Musicophilia", a:"Oliver Sacks", tags:["consciousness","eccentric experts","systems & machinery","storytelling","memory & loss"], depth:3, strange:2 },
-];
-
-function overlap(book, drivers) {
-  let s = 0;
-  drivers.forEach((d) => { if (book.tags.includes(d)) s += 2; });
-  // small tie-breaker toward books sharing more of the taste generally
-  return s;
-}
-function offlineBridges(loved, drivers) {
-  const scored = POOL.map((b) => ({ b, s: overlap(b, drivers) }))
-    .sort((x, y) => y.s - x.s);
-  const top = scored.filter((x) => x.s > 0);
-  const pick = (arr, i) => (arr[i] ? arr[i].b : POOL[i % POOL.length]);
-
-  // Vector-specific selection from the overlap-ranked list.
-  const preserve = pick(top, 0);
-  const mutate = [...top].sort((x,y)=> (Math.abs(diffSubject(y.b, preserve)) - Math.abs(diffSubject(x.b, preserve))))[0]?.b || pick(top,1);
-  const deeper = [...top].sort((x,y)=> y.b.depth - x.b.depth)[0]?.b || pick(top,2);
-  const stranger = [...top].sort((x,y)=> y.b.strange - x.b.strange)[0]?.b || pick(top,3);
-
-  const uniq = dedupe([preserve, mutate, deeper, stranger]);
-  const labels = ["Preserve the obsession","Mutate the subject","Increase the depth","Go stranger"];
-  const bridges = uniq.slice(0,4).map((b, i) => ({
-    vector: labels[i],
-    title: b.t, creator: b.a,
-    why: whyLine(labels[i], b, drivers),
-  }));
-
-  const reflection = "What stayed with you wasn't the surface of \"" + loved + "\" — it was " +
-    humanList(drivers) + ". These four continue that thread in different directions.";
-  return { reflection, bridges };
-}
-function diffSubject(a, b){ // crude subject-distance: fewer shared tags = more mutated
-  let shared = 0; a.tags.forEach(t=>{ if(b.tags.includes(t)) shared++; }); return -shared;
-}
-function dedupe(list){ const seen=new Set(); const out=[]; list.forEach(b=>{ if(!seen.has(b.t)){ seen.add(b.t); out.push(b);} });
-  // backfill if collapsed under 4
-  let i=0; while(out.length<4 && i<POOL.length){ if(!seen.has(POOL[i].t)){ seen.add(POOL[i].t); out.push(POOL[i]); } i++; }
-  return out;
-}
-function whyLine(vector, b, drivers){
-  const hit = b.tags.find(t=>drivers.includes(t)) || b.tags[0];
-  switch(vector){
-    case "Preserve the obsession": return "Keeps the " + hit + " you responded to, and goes straight at it.";
-    case "Mutate the subject": return "Different subject entirely, but the same pull toward " + hit + ".";
-    case "Increase the depth": return "Same appeal, more demanding — it takes " + hit + " further than the original did.";
-    case "Go stranger": return "Preserves " + hit + " but pushes out toward the strange and unexpected.";
-    default: return "Continues the part that mattered.";
-  }
-}
-function humanList(arr){ if(arr.length===1) return arr[0]; return arr.slice(0,-1).join(", ") + " and " + arr[arr.length-1]; }
 
 detectMode();
+greet();
+syncSend();
 </script>
 </body>
 </html>
