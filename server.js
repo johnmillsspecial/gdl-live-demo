@@ -15,7 +15,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 
 // ---- Cost fence -------------------------------------------------------------
-const MAX_TOKENS_TURN = 700;
+const MAX_TOKENS_TURN = 1024;
 const MAX_TURNS_PER_THREAD = 14;
 const DAILY_CALL_CAP = Number(process.env.GDL_DAILY_CAP || 300);
 const PER_IP_WINDOW_MS = 60 * 1000;
@@ -87,7 +87,18 @@ async function callClaude(messages) {
   if (!resp.ok) { const e = new Error("anthropic_error"); e.code = "anthropic_error"; e.status = resp.status; e.body = raw; throw e; }
   dayCount += 1;
   const data = JSON.parse(raw);
-  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  const text = (data.content || [])
+    .filter((b) => b && b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
+  if (!text) {
+    // Log exactly what came back so an empty reply is diagnosable, not a mystery.
+    console.error("empty text. stop_reason:", data.stop_reason,
+      "| block types:", (data.content || []).map((b) => b && b.type).join(","),
+      "| usage:", JSON.stringify(data.usage || {}));
+  }
+  return text;
 }
 
 // ---- Routes -----------------------------------------------------------------
