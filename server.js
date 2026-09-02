@@ -111,9 +111,19 @@ app.post("/api/chat", async (req, res) => {
   }
   try {
     const reply = await callClaude(clean);
+    if (!reply || !reply.trim()) {
+      console.error("Empty reply from model");
+      return res.status(502).json({ error: "empty_reply", message: "Model returned no text." });
+    }
     res.json({ reply });
   } catch (e) {
-    res.status(e.code === "no_api_key" ? 503 : 502).json({ error: e.code || "server_error", message: e.message });
+    // Surface the real reason (bad model, auth, rate limit) instead of a generic label.
+    let detail = e.message || "server error";
+    if (e.body) {
+      try { const p = JSON.parse(e.body); detail = p?.error?.message || detail; } catch { detail = e.body.slice(0, 300); }
+    }
+    console.error("chat error:", e.code, e.status || "", detail);
+    res.status(e.code === "no_api_key" ? 503 : 502).json({ error: e.code || "server_error", message: detail, status: e.status || null });
   }
 });
 
