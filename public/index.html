@@ -59,6 +59,11 @@
   .fchip{font-family:var(--fb);font-weight:400;font-size:13px;padding:7px 14px;background:transparent;border:1px solid var(--g4);color:var(--g1);cursor:pointer;border-radius:16px;white-space:nowrap;transition:border-color .12s,color .12s,background .12s;}
   .fchip:hover{border-color:var(--black);background:var(--black);color:var(--white);}
   .chips.spent .fchip{opacity:.4;pointer-events:none;}
+  /* recommendation card — the payoff, marked with the red accent bar */
+  .rec-card{margin-top:6px;border:1px solid var(--g5);border-left:4px solid var(--red);background:#fff;padding:22px 24px;}
+  .rec-book{font-family:var(--fc);font-weight:900;font-size:26px;line-height:1.1;letter-spacing:-0.01em;color:var(--black);}
+  .rec-author{font-family:var(--fc);font-weight:400;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:var(--g3);margin-top:7px;}
+  .rec-why{font-family:var(--fb);font-size:15px;line-height:1.7;color:var(--g1);margin-top:16px;padding-top:16px;border-top:1px solid var(--g5);white-space:pre-wrap;}
   .inputblock{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid var(--g4);border-radius:22px;padding:6px 6px 6px 18px;transition:border-color .12s,box-shadow .12s;}
   .inputblock:focus-within{border-color:var(--g2);box-shadow:0 1px 6px rgba(0,0,0,0.06);}
   textarea{flex:1;background:transparent;border:none;color:var(--black);font-family:var(--fb);font-size:15px;line-height:1.5;padding:8px 0;outline:none;resize:none;max-height:140px;min-height:24px;}
@@ -132,6 +137,20 @@ function addChips(labels){
   });
   $("thread").appendChild(wrap); scroll();
 }
+// Render the recommendation as a stylized card: red accent bar, title/author, reasoning.
+function addRecommendation(prose, title, author){
+  const el=document.createElement("div");
+  el.className="msg sys";
+  el.innerHTML='<div class="who">GDL</div>';
+  const card=document.createElement("div");
+  card.className="rec-card";
+  const t=document.createElement("div"); t.className="rec-book"; t.textContent=title;
+  card.appendChild(t);
+  if(author){ const a=document.createElement("div"); a.className="rec-author"; a.textContent=author; card.appendChild(a); }
+  if(prose){ const w=document.createElement("div"); w.className="rec-why"; w.textContent=prose; card.appendChild(w); }
+  el.appendChild(card);
+  $("thread").appendChild(el); scroll(); return el;
+}
 function spendChips(){ document.querySelectorAll(".chips:not(.spent)").forEach(w=>w.classList.add("spent")); }
 function addTyping(){
   const el=document.createElement("div");
@@ -151,7 +170,7 @@ async function send(text){
   history.push({role:"user",content:text});
   const typing=addTyping();
 
-  let reply=null, chips=[], wentOffline=false, errDetail="";
+  let reply=null, chips=[], phase="recommend", title="", author="", wentOffline=false, errDetail="";
   if(mode==="live"){
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages:history})});
@@ -159,13 +178,16 @@ async function send(text){
       if(!r.ok){ errDetail=(data && (data.message||data.error))||("status "+r.status); throw new Error(errDetail); }
       reply=(data && typeof data.reply==="string") ? data.reply.trim() : "";
       chips=(data && Array.isArray(data.chips)) ? data.chips : [];
+      phase=(data && data.phase) || "recommend";
+      title=(data && data.title) || ""; author=(data && data.author) || "";
       if(!reply){ errDetail="empty reply from server"; throw new Error(errDetail); }
     }catch(e){ wentOffline=true; if(!errDetail) errDetail=e.message||"request failed"; }
   } else { wentOffline=true; }
 
-  if(wentOffline){ setMode("offline"); const o=offlineReply(text); reply=o.reply; chips=o.chips; }
+  if(wentOffline){ setMode("offline"); const o=offlineReply(text); reply=o.reply; chips=o.chips; phase=o.phase||"recommend"; title=o.title||""; author=o.author||""; }
   typing.remove();
-  addMsg("assistant",reply);
+  if(phase==="recommend" && title){ addRecommendation(reply,title,author); }
+  else { addMsg("assistant",reply); }
   history.push({role:"assistant",content:reply});
   addChips(chips);
   busy=false; syncSend(); $("input").focus();
@@ -203,6 +225,7 @@ function offlineReply(text){
   if(!offlineAsked && history.filter(m=>m.role==="user").length<=1){
     offlineAsked=true;
     return {
+      phase:"ask", title:"", author:"",
       reply:"What pulled you in most — the feeling it left you with, the subject itself, or the writing?",
       chips:["the feeling","the subject","the writing"]
     };
@@ -212,9 +235,8 @@ function offlineReply(text){
   let pick=POOL.filter(b=>!offlineShown.has(b.t))
     .sort((x,y)=> wantStranger ? y.s-x.s : wantDeeper ? y.d-x.d : (y.d+y.s)-(x.d+x.s))[0] || POOL[0];
   offlineShown.add(pick.t);
-  const reply="The thread continues in \u201C"+pick.t+"\u201D by "+pick.a+". Preserves what mattered; changes the surface. "
-    + "[Offline mode — tagged catalog of 22. Live reasoning ranges wider.]";
-  return { reply, chips:["go stranger","something warmer","read it — another"] };
+  const reply="Continues the thread you named; changes the surface. [Offline mode — tagged catalog of 22. Live reasoning ranges wider.]";
+  return { phase:"recommend", title:pick.t, author:pick.a, reply, chips:["go stranger","something warmer","read it — another"] };
 }
 
 function autosize(){ const i=$("input"); i.style.height="auto"; i.style.height=Math.min(i.scrollHeight,140)+"px"; }
