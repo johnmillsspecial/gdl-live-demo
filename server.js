@@ -67,11 +67,12 @@ Every reply is plain prose FIRST, then, on the very last line, a single JSON obj
 - While interviewing:
 {"phase":"ask","chips":["option one","option two","option three"]}
 - When recommending (or answering pushback with a new pick):
-{"phase":"recommend","chips":["go stranger","warmer","something older","read it — another"]}
+{"phase":"recommend","title":"Exact Book Title","author":"Author Name","chips":["go stranger","warmer","something older","read it — another"]}
 Rules for the JSON line:
 - It must be the LAST line, valid JSON, no code fences, nothing after it.
+- For "recommend", "title" and "author" MUST be the exact book named in your prose, given as plain separate strings (no markdown, no asterisks, no quotes inside them). The prose still reads naturally and names the book, but do NOT wrap the title in asterisks or markdown — the interface styles it. State the thread and the why in the prose; keep it to a few sentences.
 - "chips" are 2 to 4 SHORT tappable labels (1 to 4 words). For "ask", they are answers to your question. For "recommend", they are ways to steer the next pick.
-- The prose above the JSON never mentions the JSON, never uses headers, bullets, first person, or a sign-off. Title and author stated clearly in a sentence.`
+- The prose above the JSON never mentions the JSON, never uses headers, bullets, first person, markdown emphasis, or a sign-off.`
 
 async function callClaude(messages) {
   if (!API_KEY) { const e = new Error("no_api_key"); e.code = "no_api_key"; throw e; }
@@ -109,7 +110,7 @@ async function callClaude(messages) {
 
 // Split the model's reply into spoken prose + the trailing JSON control object.
 function parseReply(text) {
-  const out = { prose: text, phase: "recommend", chips: [] };
+  const out = { prose: text, phase: "recommend", chips: [], title: "", author: "" };
   if (!text) return out;
   const lines = text.split("\n");
   // Find the last non-empty line and try to parse it as JSON.
@@ -123,6 +124,8 @@ function parseReply(text) {
         if (obj && (obj.phase === "ask" || obj.phase === "recommend")) {
           out.phase = obj.phase;
           out.chips = Array.isArray(obj.chips) ? obj.chips.filter((c) => typeof c === "string").slice(0, 4) : [];
+          out.title = typeof obj.title === "string" ? obj.title.replace(/[*_"]/g, "").trim() : "";
+          out.author = typeof obj.author === "string" ? obj.author.replace(/[*_"]/g, "").trim() : "";
           out.prose = lines.slice(0, i).join("\n").trim();
         }
       } catch { /* leave prose intact if the tail isn't valid JSON */ }
@@ -158,7 +161,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(502).json({ error: "empty_reply", message: "Model returned no text." });
     }
     const parsed = parseReply(reply);
-    res.json({ reply: parsed.prose, phase: parsed.phase, chips: parsed.chips });
+    res.json({ reply: parsed.prose, phase: parsed.phase, chips: parsed.chips, title: parsed.title, author: parsed.author });
   } catch (e) {
     // Surface the real reason (bad model, auth, rate limit) instead of a generic label.
     let detail = e.message || "server error";
